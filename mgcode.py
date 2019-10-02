@@ -1,10 +1,16 @@
-from dolfin import (UnitCubeMesh, FunctionSpace, PETScDMCollection,
-                    Expression, DirichletBC, TrialFunction, TestFunction,
-                    Constant, dot, grad, dx, PETScMatrix, PETScVector,
-                    assemble_system, interpolate)
+from dolfin import (UnitCubeMesh, FunctionSpace,
+                    DirichletBC, TrialFunction, TestFunction,
+                    Constant, MPI, Function, interpolate)
+from dolfin.fem import assemble
+from dolfin.cpp.fem import PETScDMCollection
+from dolfin.fem import assemble_matrix, assemble_vector, apply_lifting, set_bc
+
+from ufl import dot, grad, dx, SpatialCoordinate
+import numpy as np
+from numpy import sin, pi
+
 from petsc4py import PETSc
 from petsc4py.PETSc import Mat
-
 
 # Use petsc4py to define the smoothers
 def direct(Ah, bh):
@@ -116,61 +122,66 @@ def mg(Ah, bh, uh, prolongation, N_cycles, N_levels, ksptype, pctype):
 # Read the meshes. mesh1 is the coarse mesh and mesh2 is the fine mesh
 
 # mesh1=Mesh("./coarse.xml")
-mesh1 = UnitCubeMesh(10, 10, 10)
-V1 = FunctionSpace(mesh1, 'P', 1)
-n1 = mesh1.num_vertices()
+mesh1 = UnitCubeMesh(MPI.comm_world, 10, 10, 10)
+V1 = FunctionSpace(mesh1, ('P', 1))
+n1 = mesh1.num_entities(0)
 
 # mesh2=Mesh("./fine.xml")
-mesh2 = UnitCubeMesh(20, 20, 20)
-V2 = FunctionSpace(mesh2, 'P', 1)
-n2 = mesh2.num_vertices()
+mesh2 = UnitCubeMesh(MPI.comm_world, 20, 20, 20)
+V2 = FunctionSpace(mesh2, ('P', 1))
+n2 = mesh2.num_entities(0)
 
-mesh3 = UnitCubeMesh(40, 40, 40)
-V3 = FunctionSpace(mesh3, 'P', 1)
-n3 = mesh3.num_vertices()
+mesh3 = UnitCubeMesh(MPI.comm_world, 40, 40, 40)
+V3 = FunctionSpace(mesh3, ('P', 1))
+n3 = mesh3.num_entities(0)
 
-mesh4 = UnitCubeMesh(80, 80, 80)
-V4 = FunctionSpace(mesh4, 'P', 1)
-n4 = mesh4.num_vertices()
+mesh4 = UnitCubeMesh(MPI.comm_world, 80, 80, 80)
+V4 = FunctionSpace(mesh4, ('P', 1))
+n4 = mesh4.num_entities(0)
 
 # Find the transfer operators, puse is the prolongation operator list
 # note the order is from fine to coarse
-puse0 = PETScDMCollection.create_transfer_matrix(V3, V4)
-puse0 = puse0.mat()
-puse1 = PETScDMCollection.create_transfer_matrix(V2, V3)
-puse1 = puse1.mat()
-puse2 = PETScDMCollection.create_transfer_matrix(V1, V2)
-puse2 = puse2.mat()
+puse0 = PETScDMCollection.create_transfer_matrix(V3._cpp_object, V4._cpp_object)
+puse1 = PETScDMCollection.create_transfer_matrix(V2._cpp_object, V3._cpp_object)
+puse2 = PETScDMCollection.create_transfer_matrix(V1._cpp_object, V2._cpp_object)
 puse = [puse0, puse1, puse2]
 
 # Use FEniCS to formulate the FEM problem. A is the matrix, b is the rhs.
-u_D = Expression('0.0', degree=0)
-
+u_D = Function(V4)
+u_D.vector.zeroEntries()
 
 # Define boundary for DirichletBC
-def boundary(x, on_boundary):
-    return on_boundary
+def boundary(x):
+    return np.ones(len(x), dtype=bool)
 
 
 bc = DirichletBC(V4, u_D, boundary)
 u = TrialFunction(V4)
 v = TestFunction(V4)
 # f = Expression('2*pi*pi*sin(pi*x[0])*sin(pi*x[1])',degree=6)
-f = Constant(0.0)
+f = Constant(mesh4, 0.0)
 a = dot(grad(u), grad(v)) * dx
 L = f * v * dx
-A = PETScMatrix()
-b = PETScVector()
-assemble_system(a, L, bc, A_tensor=A, b_tensor=b)
 
-A = A.mat()
-b = b.vec()
+# Assemble vector and apply lifting of bcs during assembly
+A = assemble_matrix(a)
+A.assemble()
+b = assemble_vector(L)
+apply_lifting(b, [a], [[bc]])
+b.ghostUpdate(addv=PETSc.InsertMode.ADD, mode=PETSc.ScatterMode.REVERSE)
+set_bc(b, [bc])
 
 # Set initial guess
-fe = Expression('sin(pi*k*x[0])*sin(pi*k*x[1])', degree=6, k=10.0)
+fp = Function(V4)
+x = SpatialCoordinate(mesh4)
+
+k = 10.0
+def source(values, x):
+    values[:, 0] = sin(pi*k*x[:, 0])*sin(pi*k*x[:, 1])
+
 # fe=Expression('sin(pi*k*x[0])*sin(pi*k*x[1])+sin(2.0*pi*x[0])*sin(2.0*pi*x[1])',degree=6,k=10.0)
-fp = interpolate(fe, V4)
-fph = fp.vector().vec()
+fp = interpolate(source, V4)
+fph = fp.vector
 
 # Multigrid
 print('Initial residual is:', residual(A, b, fph))
