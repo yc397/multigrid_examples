@@ -23,7 +23,7 @@ def direct(Ah, bh):
 
 def smoother(Ag, bg, Ng, igg, ksptype, pctype):
     '''Smoother for multigrid. Ag, and bg are the LHS and RHS respectively.
-    Ng is the number of iterations (usually 1), igg is the initial guess
+    Ng is the number of iterations (usually 2), igg is the initial guess
     for the solution.
     ksptype and pctype can be ('richardson', 'jacobi'), ('richardson', 'sor')
     or ('chebyshev', 'jacobi') for example '''
@@ -48,12 +48,15 @@ def residual(Ah, bh, xh):
     return normr
 
 
-def mg(Ah, bh, uh, prolongation, N_cycles, N_levels, ksptype, pctype):
+def mg(Ah, bh, uh, prolongation, N_cycles, N_levels, nu1, nu2,
+        ksptype, pctype):
     '''multigrid for N level mesh
     Ah is the matrix, bh is rhs on the finest grid,
     uh is the initial guess for finest grid
     prolongation is a list containing all of operators from fine-to-coarse
-    N_cycles is number of cycles and N_levels is number of levels'''
+    N_cycles is number of cycles and N_levels is number of levels
+    nu1, nu2 refer to the number of pre, post-smoothers apllied
+    ksptype, pctype corresponds to the smoother used'''
 
     r0 = residual(Ah, bh, uh)
 
@@ -90,7 +93,7 @@ def mg(Ah, bh, uh, prolongation, N_cycles, N_levels, ksptype, pctype):
         for i in range(N_levels - 1):
 
             # apply smoother to every level except the coarsest level
-            smoother(Alist[i], blist[i], 2, uhlist[i], ksptype, pctype)
+            smoother(Alist[i], blist[i], nu1, uhlist[i], ksptype, pctype)
 
             # obtain the rhs for next level
             res = blist[i] - Alist[i] * uhlist[i]
@@ -103,7 +106,7 @@ def mg(Ah, bh, uh, prolongation, N_cycles, N_levels, ksptype, pctype):
         for j in range(N_levels - 2, -1, -1):
 
             uhlist[j] += prolongation[j] * uhlist[j + 1]
-            smoother(Alist[j], blist[j], 2, uhlist[j], ksptype, pctype)
+            smoother(Alist[j], blist[j], nu2, uhlist[j], ksptype, pctype)
 
         # calculate the relative residual
         res4 = residual(Ah, bh, uhlist[0]) / r0
@@ -113,35 +116,34 @@ def mg(Ah, bh, uh, prolongation, N_cycles, N_levels, ksptype, pctype):
 
 
 # =================================================================
-# Read the meshes. mesh1 is the coarse mesh and mesh2 is the fine mesh
+# Read the meshes.
+nl = 4
+Vspace = []
 
-# mesh1=Mesh("./coarse.xml")
-mesh1 = UnitCubeMesh(10, 10, 10)
+mesh = UnitCubeMesh(80, 80, 80)
+V = FunctionSpace(mesh, 'P', 1)
+Vspace.append(V)
+
+mesh1 = UnitCubeMesh(40, 40, 40)
 V1 = FunctionSpace(mesh1, 'P', 1)
-n1 = mesh1.num_vertices()
+Vspace.append(V1)
 
-# mesh2=Mesh("./fine.xml")
 mesh2 = UnitCubeMesh(20, 20, 20)
 V2 = FunctionSpace(mesh2, 'P', 1)
-n2 = mesh2.num_vertices()
+Vspace.append(V2)
 
-mesh3 = UnitCubeMesh(40, 40, 40)
+mesh3 = UnitCubeMesh(10, 10, 10)
 V3 = FunctionSpace(mesh3, 'P', 1)
-n3 = mesh3.num_vertices()
-
-mesh4 = UnitCubeMesh(80, 80, 80)
-V4 = FunctionSpace(mesh4, 'P', 1)
-n4 = mesh4.num_vertices()
+Vspace.append(V3)
 
 # Find the transfer operators, puse is the prolongation operator list
 # note the order is from fine to coarse
-puse0 = PETScDMCollection.create_transfer_matrix(V3, V4)
-puse0 = puse0.mat()
-puse1 = PETScDMCollection.create_transfer_matrix(V2, V3)
-puse1 = puse1.mat()
-puse2 = PETScDMCollection.create_transfer_matrix(V1, V2)
-puse2 = puse2.mat()
-puse = [puse0, puse1, puse2]
+puse = []
+for il in range(nl-1):
+    pmat = PETScDMCollection.create_transfer_matrix(Vspace[il+1], Vspace[il])
+    pmat = pmat.mat()
+    puse.append(pmat)
+# ==========================================================================
 
 # Use FEniCS to formulate the FEM problem. A is the matrix, b is the rhs.
 u_D = Expression('0.0', degree=0)
@@ -152,9 +154,9 @@ def boundary(x, on_boundary):
     return on_boundary
 
 
-bc = DirichletBC(V4, u_D, boundary)
-u = TrialFunction(V4)
-v = TestFunction(V4)
+bc = DirichletBC(V, u_D, boundary)
+u = TrialFunction(V)
+v = TestFunction(V)
 # f = Expression('2*pi*pi*sin(pi*x[0])*sin(pi*x[1])',degree=6)
 f = Constant(0.0)
 a = dot(grad(u), grad(v)) * dx
@@ -168,11 +170,10 @@ b = b.vec()
 
 # Set initial guess
 fe = Expression('sin(pi*k*x[0])*sin(pi*k*x[1])', degree=6, k=10.0)
-# fe=Expression('sin(pi*k*x[0])*sin(pi*k*x[1])+sin(2.0*pi*x[0])*sin(2.0*pi*x[1])',degree=6,k=10.0)
-fp = interpolate(fe, V4)
+fp = interpolate(fe, V)
 fph = fp.vector().vec()
 
 # Multigrid
 print('Initial residual is:', residual(A, b, fph))
-wh = mg(A, b, fph, puse, 10, 4, 'richardson', 'sor')
+wh = mg(A, b, fph, puse, 10, 4, 1, 1, 'richardson', 'sor')
 print('Final residual is:', residual(A, b, fph))
