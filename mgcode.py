@@ -170,8 +170,9 @@ a = dot(grad(u), grad(v)) * dx
 L = f * v * dx
 
 # Assemble vector and apply lifting of bcs during assembly
-A = assemble_matrix(a)
+A = assemble_matrix(a, [bc])
 A.assemble()
+
 b = assemble_vector(L)
 apply_lifting(b, [a], [[bc]])
 b.ghostUpdate(addv=PETSc.InsertMode.ADD, mode=PETSc.ScatterMode.REVERSE)
