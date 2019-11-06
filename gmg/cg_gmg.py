@@ -52,7 +52,7 @@ def residual(Ah, bh, xh):
 
 
 def mg(Ahlist, bh, uh, prolongation, restriction, N_cycles, N_levels,
-        nu1, nu2, ksptype, pctype):
+        nu, ksptype, pctype):
     '''multigrid for N level mesh
     Ahlist is the matrix list from fine to coarse
     bh is rhs on the finest grid
@@ -83,7 +83,7 @@ def mg(Ahlist, bh, uh, prolongation, restriction, N_cycles, N_levels,
         for i in range(N_levels - 1):
 
             # apply smoother to every level except the coarsest level
-            smoother(Ahlist[i], blist[i], 2, uhlist[i], ksptype, pctype)
+            smoother(Ahlist[i], blist[i], nu, uhlist[i], ksptype, pctype)
 
             # obtain the rhs for next level
             res = blist[i] - Ahlist[i] * uhlist[i]
@@ -97,7 +97,7 @@ def mg(Ahlist, bh, uh, prolongation, restriction, N_cycles, N_levels,
         for j in range(N_levels - 2, -1, -1):
 
             uhlist[j] += prolongation[j] * uhlist[j + 1]
-            smoother(Ahlist[j], blist[j], 2, uhlist[j], ksptype, pctype)
+            smoother(Ahlist[j], blist[j], nu, uhlist[j], ksptype, pctype)
 
         # calculate the relative residual
         # res4 = residual(Ah, bh, uhlist[0]) / r0
@@ -106,8 +106,8 @@ def mg(Ahlist, bh, uh, prolongation, restriction, N_cycles, N_levels,
 # ================================================================
 
 
-def mgcg(Ah, bh, igh, Ncg, Ahlist, prolongation, restriction, Nmg, Nle, nu1,
-         nu2, ksptype, pctype):
+def mgcg(Ah, bh, igh, Ncg, Ahlist, prolongation, restriction, Nmg, Nle, nu,
+         ksptype, pctype):
     '''multigrid preconditioned conjugate gradient
     Ah is the matrix, bh is the rhs, igh is initial guess
     Ncg is the number of iterations of cg
@@ -120,7 +120,7 @@ def mgcg(Ah, bh, igh, Ncg, Ahlist, prolongation, restriction, Nmg, Nle, nu1,
     r0 = residual(Ah, bh, igh)
     rk = bh - Ah * igh
     wk = igh.copy()
-    zk = mg(Ahlist, rk, wk, prolongation, restriction, Nmg, Nle, nu1, nu2,
+    zk = mg(Ahlist, rk, wk, prolongation, restriction, Nmg, Nle, nu,
             ksptype, pctype)
     pk = zk.copy()
     xk = igh.copy()
@@ -134,8 +134,8 @@ def mgcg(Ah, bh, igh, Ncg, Ahlist, prolongation, restriction, Nmg, Nle, nu1,
         rs = alpha * rtest
         rk2 = (rk - rs).copy()
         rt = igh.copy()
-        zk2 = mg(Ahlist, rk2, rt, prolongation, restriction, Nmg, Nle, nu1,
-                 nu2, ksptype, pctype)
+        zk2 = mg(Ahlist, rk2, rt, prolongation, restriction, Nmg, Nle, nu,
+                 ksptype, pctype)
         beta = (rk2.dot(zk2)) / (rk.dot(zk))
         y1 = beta * pk
         pk = (zk2 + y1).copy()
@@ -143,8 +143,8 @@ def mgcg(Ah, bh, igh, Ncg, Ahlist, prolongation, restriction, Nmg, Nle, nu1,
         zk = zk2.copy()
 
         res4 = residual(Ah, bh, xk)
-        print('relative residual after', ite + 1, 'iterations of CG is:',
-              res4/r0)
+        print('residual after', ite + 1, 'iterations of CG is:',
+              res4)
     return xk
 
 
@@ -263,7 +263,7 @@ igh[:] = 0.0
 fph = igh.vec()
 # Multigrid conjugate gradient
 print('Initial residual is:', residual(A, b, fph))
-wh = mgcg(A, b, fph, 10, Alist, puse, ruse, 1, nl, 1, 1, 'chebyshev', 'jacobi')
+wh = mgcg(A, b, fph, 10, Alist, puse, ruse, 1, nl, 2, 'chebyshev', 'jacobi')
 quit()
 # ==============================================================================
 rei = Function(V)
