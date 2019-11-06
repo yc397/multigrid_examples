@@ -1,4 +1,4 @@
-from dolfin import (UnitCubeMesh, FunctionSpace, PETScDMCollection,
+from dolfin import (Mesh, FunctionSpace, PETScDMCollection,
                     Expression, DirichletBC, TrialFunction, TestFunction,
                     Constant, dot, grad, dx, PETScMatrix, PETScVector,
                     assemble_system, interpolate)
@@ -108,19 +108,19 @@ def mg(Ahlist, bh, uh, prolongation, restriction, N_cycles, N_levels,
 nl = 4
 Vspace = []
 
-mesh = UnitCubeMesh(32, 32, 32)
+mesh = Mesh("./level_1.xml")
 V = FunctionSpace(mesh, 'P', 1)
 Vspace.append(V)
 
-mesh1 = UnitCubeMesh(16, 16, 16)
+mesh1 = Mesh("./level_2.xml")
 V1 = FunctionSpace(mesh1, 'P', 1)
 Vspace.append(V1)
 
-mesh2 = UnitCubeMesh(8, 8, 8)
+mesh2 = Mesh("./level_3.xml")
 V2 = FunctionSpace(mesh2, 'P', 1)
 Vspace.append(V2)
 
-mesh3 = UnitCubeMesh(4, 4, 4)
+mesh3 = Mesh("./level_4.xml")
 V3 = FunctionSpace(mesh3, 'P', 1)
 Vspace.append(V3)
 

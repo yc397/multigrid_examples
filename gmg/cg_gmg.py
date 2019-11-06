@@ -241,8 +241,8 @@ print('problem size: ', b.getSize())
 
 # Construct the alist for systems on levels from fine to coarse
 # construct the transfer operators first
-ruse = [None] * (3)
-Alist = [None] * (4)
+ruse = [None] * (nl - 1)
+Alist = [None] * (nl)
 
 ruse[0] = Mat()
 puse[0].transpose(ruse[0])
@@ -255,8 +255,8 @@ for il in range(1, nl-1):
     Alist[il - 1].PtAP(puse[il - 1], Alist[il])
 
 # find the coarsest grid matrix
-Alist[3] = Mat()
-Alist[2].PtAP(puse[2], Alist[3])
+Alist[nl-1] = Mat()
+Alist[nl-2].PtAP(puse[nl-2], Alist[nl-1])
 # =========================================================
 igh = as_backend_type(Function(V).vector())
 igh[:] = 0.0
