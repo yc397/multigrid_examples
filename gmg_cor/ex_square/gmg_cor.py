@@ -5,6 +5,7 @@ from dolfin import (Mesh, FunctionSpace, PETScDMCollection,
 from petsc4py import PETSc
 from petsc4py.PETSc import (Mat, Vec)
 import numpy as np
+import find_low
 
 
 # Use petsc4py to define the smoothers
@@ -262,12 +263,9 @@ Alist[nl-2].PtAP(puse[nl-2], Alist[nl-1])
 # =========================================================
 
 # generate the local correction systems
-bad_level1 = [1792, 14, 15, 16, 784, 21, 22, 23, 920, 921, 922, 27, 919, 29, 30, 31, 28, 37, 38, 40, 41, 45, 1845, 1846, 1847, 1848, 53, 1850, 55, 54, 1849, 1726, 959, 960, 56, 840, 841, 842, 843, 844, 1899, 1900, 1901, 1902, 1013, 1787, 1788, 1789, 1790, 1791]
-bad_level2 = [129, 130, 131, 133, 134, 135, 141, 142, 143, 144, 157, 158, 159, 420, 422, 423, 166, 169, 170, 437, 183, 184, 199, 200, 459, 460, 474, 475, 96, 97, 226, 227, 486, 487, 488, 506, 507]
-bad_level3 = [132, 133, 134, 135, 9, 15, 16, 23, 24, 25, 26, 33, 34, 61, 62, 63, 64, 75, 76, 77, 78, 79, 82, 83, 84, 92, 94, 95, 96, 97, 99, 100, 101, 102, 103, 108, 112, 113, 114, 118, 119, 120, 121]
-# bad_level1 = []
-# bad_level2 = []
-# bad_level3 = []
+bad_level1 = find_low.find_low(mesh, V)
+bad_level2 = find_low.find_low(mesh1, V1)
+bad_level3 = find_low.find_low(mesh2, V2)
 Blist = [bad_level1, bad_level2, bad_level3]
 
 
@@ -283,5 +281,6 @@ fph = fp.vector().vec()
 
 # Multigrid
 print('Initial residual is:', residual(A, b, fph))
-wh = mg(Alist, b, fph, puse, ruse, 10, nl, 2, 'richardson', 'sor', corlist, Blist)
+wh = mg(Alist, b, fph, puse, ruse, 10, nl, 2,
+        'richardson', 'sor', corlist, Blist)
 print('Final residual is:', residual(A, b, wh))
