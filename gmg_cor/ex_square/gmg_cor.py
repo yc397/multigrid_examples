@@ -1,5 +1,5 @@
 from dolfin import (Mesh, FunctionSpace, PETScDMCollection,
-                    Expression, DirichletBC, TrialFunction, TestFunction,
+                    Expression, near, DirichletBC, TrialFunction, TestFunction,
                     Constant, dot, grad, dx, PETScMatrix, PETScVector,
                     assemble_system, interpolate)
 from petsc4py import PETSc
@@ -170,7 +170,7 @@ V1 = FunctionSpace(mesh1, 'P', 1)
 Vspace.append(V1)
 
 mesh2 = Mesh("./level_3.xml")
-V2 = FunctionSpace(mesh2, 'P', 1)
+V2 = FunctionSpace(mesh2, 'CG', 1)
 Vspace.append(V2)
 
 mesh3 = Mesh("./level_4.xml")
@@ -201,9 +201,8 @@ coord2 = mesh2.coordinates()
 coord2[48] = np.array([0.14844939, 0.48768435])
 coord2[93] = np.array([0.14419585, 0.48552866])
 coord2[54] = np.array([0.61874016, 0.20549839])
-coord2[82] = np.array([0.61747261, 0.20908676])
 coord2[120] = np.array([0.99948903, 0.65001777])
-coord2[94] = np.array([0.99935963, 0.5501653])
+
 
 # ==========================================================================
 
@@ -223,14 +222,15 @@ u_D = Expression('0.0', degree=0)
 
 # Define boundary for DirichletBC
 def boundary(x, on_boundary):
-    return on_boundary
+    tol = 1E-14
+    return on_boundary and (near(x[1], 0, tol) or near(x[1], 1, tol))
 
 
 bc = DirichletBC(V, u_D, boundary)
 u = TrialFunction(V)
 v = TestFunction(V)
-# f = Expression('2*pi*pi*sin(pi*x[0])*sin(pi*x[1])',degree=6)
-f = Constant(0.0)
+f = Expression('2*pi*pi*sin(pi*x[0])*sin(pi*x[1])',degree=6)
+#f = Constant(0.0)
 a = dot(grad(u), grad(v)) * dx
 L = f * v * dx
 A = PETScMatrix()
@@ -263,9 +263,9 @@ Alist[nl-2].PtAP(puse[nl-2], Alist[nl-1])
 # =========================================================
 
 # generate the local correction systems
-bad_level1 = find_low.find_low(mesh, V)
-bad_level2 = find_low.find_low(mesh1, V1)
-bad_level3 = find_low.find_low(mesh2, V2)
+bad_level1 = find_low.find_low(mesh, V, Alist[0])
+bad_level2 = find_low.find_low(mesh1, V1, Alist[1])
+bad_level3 = find_low.find_low(mesh2, V2, Alist[2])
 Blist = [bad_level1, bad_level2, bad_level3]
 
 
@@ -275,7 +275,7 @@ corlist = makecorrection(Alist, Blist)
 
 
 # Set initial guess
-fe = Expression('sin(pi*k*x[0])*sin(pi*k*x[1])', degree=6, k=10.0)
+fe = Constant(0.0)
 fp = interpolate(fe, V)
 fph = fp.vector().vec()
 
