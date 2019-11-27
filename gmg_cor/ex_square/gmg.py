@@ -58,7 +58,7 @@ def mg(Ahlist, bh, uh, prolongation, restriction, N_cycles, N_levels,
     N_cycles is number of cycles and N_levels is number of levels
     nu1, nu2 are the number of pre- and post-smoothers applied
     ksptype, pctype are the smoother used'''
-    # r0 = residual(Ahlist[0], bh, uh)
+    r0 = residual(Ahlist[0], bh, uh)
 
     # make a restriction list and gird operator list and rhs list
     # and initial guess list
@@ -98,7 +98,7 @@ def mg(Ahlist, bh, uh, prolongation, restriction, N_cycles, N_levels,
 
         # calculate the relative residual
         res4 = residual(Ahlist[0], bh, uhlist[0])
-        print('the residual after', num_cycle + 1, 'cycles: ', res4)
+        print('the residual after', num_cycle + 1, 'cycles: ', res4/r0)
 
     return uhlist[0]
 
@@ -145,8 +145,8 @@ def boundary(x, on_boundary):
 bc = DirichletBC(V, u_D, boundary)
 u = TrialFunction(V)
 v = TestFunction(V)
-# f = Expression('2*pi*pi*sin(pi*x[0])*sin(pi*x[1])',degree=6)
-f = Constant(0.0)
+f = Expression('2*pi*pi*sin(pi*x[0])*sin(pi*x[1])',degree=6)
+#f = Constant(0.0)
 a = dot(grad(u), grad(v)) * dx
 L = f * v * dx
 A = PETScMatrix()
@@ -179,11 +179,11 @@ Alist[nl-2].PtAP(puse[nl-2], Alist[nl-1])
 # =========================================================
 
 # Set initial guess
-fe = Expression('sin(pi*k*x[0])*sin(pi*k*x[1])', degree=6, k=10.0)
+fe = Constant(0.0)
 fp = interpolate(fe, V)
 fph = fp.vector().vec()
 
 # Multigrid
 print('Initial residual is:', residual(A, b, fph))
-wh = mg(Alist, b, fph, puse, ruse, 10, nl, 2, 'richardson', 'sor')
+wh = mg(Alist, b, fph, puse, ruse, 15, nl, 2, 'richardson', 'sor')
 print('Final residual is:', residual(A, b, wh))

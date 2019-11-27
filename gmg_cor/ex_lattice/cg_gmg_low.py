@@ -203,6 +203,10 @@ coord2[1574] = np.array([5.07777822, 0.07400174, 3.67485144])
 coord2[2060] = np.array([5.0774665, 0.07430691, 3.67452278])
 coord2[2750] = np.array([4.35516738, 5.89244318, 5.49917535])
 
+# level four
+coord3 = mesh3.coordinates()
+coord3[209] = np.array([5.33337402, 5.33337402, 5.33349609])
+
 # ==========================================================================
 
 # Find the transfer operators, puse is the prolongation operator list

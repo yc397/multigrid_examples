@@ -109,7 +109,7 @@ def mg(Ahlist, bh, uh, prolongation, restriction, N_cycles, N_levels,
     N_cycles is number of cycles and N_levels is number of levels
     nu1, nu2 are the number of pre- and post-smoothers applied
     ksptype, pctype are the smoother used'''
-    # r0 = residual(Ahlist[0], bh, uh)
+    r0 = residual(Ahlist[0], bh, uh)
 
     # make a restriction list and gird operator list and rhs list
     # and initial guess list
@@ -151,7 +151,7 @@ def mg(Ahlist, bh, uh, prolongation, restriction, N_cycles, N_levels,
 
         # calculate the relative residual
         res4 = residual(Ahlist[0], bh, uhlist[0])
-        print('the residual after', num_cycle + 1, 'cycles: ', res4)
+        print('the residual after', num_cycle + 1, 'cycles: ', res4/r0)
 
     return uhlist[0]
 
@@ -203,6 +203,10 @@ coord2[93] = np.array([0.14419585, 0.48552866])
 coord2[54] = np.array([0.61874016, 0.20549839])
 coord2[120] = np.array([0.99948903, 0.65001777])
 
+# level four
+coord3 = mesh3.coordinates()
+coord3[20] = np.array([0.52352487, 0.60141771])
+coord3[35] = np.array([0.4310340283171, 0.6314523077389089])
 
 # ==========================================================================
 
@@ -281,6 +285,6 @@ fph = fp.vector().vec()
 
 # Multigrid
 print('Initial residual is:', residual(A, b, fph))
-wh = mg(Alist, b, fph, puse, ruse, 10, nl, 2,
+wh = mg(Alist, b, fph, puse, ruse, 15, nl, 2,
         'richardson', 'sor', corlist, Blist)
 print('Final residual is:', residual(A, b, wh))

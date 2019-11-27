@@ -94,6 +94,7 @@ def smoother_cor(Ag, bg, Ng, igg, ksptype, pctype, Acor, poordof):
 
     for i in range(Ng):
 
+        smoother_local(Ag, bg, igg, Acor, poordof)
         smoother_global(Ag, bg, 1, igg, ksptype, pctype)
         smoother_local(Ag, bg, igg, Acor, poordof)
 
@@ -207,19 +208,19 @@ def mgcg(Ah, bh, igh, Ncg, Ahlist, prolongation, restriction, Nmg, Nle, nu,
 Vspace = []
 
 mesh = Mesh("./level_1.xml")
-V = VectorFunctionSpace(mesh, 'P', 2)
+V = VectorFunctionSpace(mesh, 'P', 1)
 Vspace.append(V)
 
 mesh1 = Mesh("./level_2.xml")
-V1 = VectorFunctionSpace(mesh1, 'P', 2)
+V1 = VectorFunctionSpace(mesh1, 'P', 1)
 Vspace.append(V1)
 
 mesh2 = Mesh("./level_3.xml")
-V2 = VectorFunctionSpace(mesh2, 'P', 2)
+V2 = VectorFunctionSpace(mesh2, 'P', 1)
 Vspace.append(V2)
 
 mesh3 = Mesh("./level_4.xml")
-V3 = VectorFunctionSpace(mesh3, 'P', 2)
+V3 = VectorFunctionSpace(mesh3, 'P', 1)
 Vspace.append(V3)
 
 nl = len(Vspace)
@@ -258,6 +259,9 @@ coord2[1574] = np.array([5.07777822, 0.07400174, 3.67485144])
 coord2[2060] = np.array([5.0774665, 0.07430691, 3.67452278])
 coord2[2750] = np.array([4.35516738, 5.89244318, 5.49917535])
 
+# level four
+coord3 = mesh3.coordinates()
+coord3[209] = np.array([5.33337402, 5.33337402, 5.33349609])
 # ==========================================================================
 
 # Find the transfer operators, puse is the prolongation operator list

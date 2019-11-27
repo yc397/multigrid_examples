@@ -191,7 +191,7 @@ bc = DirichletBC(V, u_D, boundary_D)
 u = TrialFunction(V)
 v = TestFunction(V)
 f = Expression("10*exp(-(pow(x[0] - 0.5, 2) + pow(x[1] - 0.5, 2) \
-                 + pow(x[2] - 0.5, 2)) / 1)", degree=6)
+                 + pow(x[2] - 0.5, 2)) / 0.02)", degree=6)
 g = Expression("sin(5.0*x[0])*sin(5.0*x[1])", degree=6)
 a = dot(grad(u), grad(v)) * dx
 L = f * v * dx + g * v * ds

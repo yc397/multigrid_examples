@@ -93,6 +93,7 @@ def smoother_cor(Ag, bg, Ng, igg, ksptype, pctype, Acor, poordof):
 
     for i in range(Ng):
 
+        smoother_local(Ag, bg, igg, Acor, poordof)
         smoother_global(Ag, bg, 1, igg, ksptype, pctype)
         smoother_local(Ag, bg, igg, Acor, poordof)
 
@@ -109,7 +110,8 @@ def mg(Ahlist, bh, uh, prolongation, restriction, N_cycles, N_levels,
     N_cycles is number of cycles and N_levels is number of levels
     nu1, nu2 are the number of pre- and post-smoothers applied
     ksptype, pctype are the smoother used'''
-    # r0 = residual(Ahlist[0], bh, uh)
+    
+    r0 = residual(Ahlist[0], bh, uh)
 
     # make a restriction list and gird operator list and rhs list
     # and initial guess list
@@ -151,7 +153,7 @@ def mg(Ahlist, bh, uh, prolongation, restriction, N_cycles, N_levels,
 
         # calculate the relative residual
         res4 = residual(Ahlist[0], bh, uhlist[0])
-        print('the residual after', num_cycle + 1, 'cycles: ', res4)
+        print('the residual after', num_cycle + 1, 'cycles: ', res4/r0)
 
     return uhlist[0]
 
@@ -242,7 +244,7 @@ bc = DirichletBC(V, u_D, boundary_D)
 u = TrialFunction(V)
 v = TestFunction(V)
 f = Expression("10*exp(-(pow(x[0] - 0.5, 2) + pow(x[1] - 0.5, 2) \
-                 + pow(x[2] - 0.5, 2)) / 1)", degree=6)
+                 + pow(x[2] - 0.5, 2)) / 0.02)", degree=6)
 g = Expression("sin(5.0*x[0])*sin(5.0*x[1])", degree=6)
 a = dot(grad(u), grad(v)) * dx
 L = f * v * dx + g * v * ds
