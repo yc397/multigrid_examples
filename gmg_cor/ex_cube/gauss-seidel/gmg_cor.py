@@ -93,6 +93,7 @@ def smoother_cor(Ag, bg, Ng, igg, ksptype, pctype, Acor, poordof):
 
     for i in range(Ng):
 
+        smoother_local(Ag, bg, igg, Acor, poordof)
         smoother_global(Ag, bg, 1, igg, ksptype, pctype)
         smoother_local(Ag, bg, igg, Acor, poordof)
 
